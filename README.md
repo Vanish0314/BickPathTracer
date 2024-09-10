@@ -1,6 +1,13 @@
+<!--
+ * @Author: Vanish
+ * @Date: 2024-07-14 15:10:09
+ * @LastEditTime: 2024-09-10 16:37:08
+ * Also View: http://vanishing.cc
+ * Copyright@ https://creativecommons.org/licenses/by/4.0/deed.zh-hans
+-->
 # 前言
 
-这是一个纯手搓的软路径追踪渲染器,我叫它Bick.但是由于各种原因,没能实现一开始的技术目标,而且目前阶段也还是存在一些问题，渲染的结果也并不很正确。
+这是一个纯手搓的软路径追踪渲染器
 
 # Feature
 
