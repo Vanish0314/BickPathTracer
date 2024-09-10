@@ -1,7 +1,7 @@
 /*
  * @Author: Vanish
  * @Date: 2024-05-31 03:56:56
- * @LastEditTime: 2024-07-14 15:30:55
+ * @LastEditTime: 2024-09-10 02:43:07
  * Also View: http://vanishing.cc
  * Copyright@ https://creativecommons.org/licenses/by/4.0/deed.zh-hans
  */
@@ -14,9 +14,11 @@
  *****************************************/
 
 #define PI 3.1415926535897932
-#define SAMPLE_COUNT 16
+#define SAMPLE_COUNT 1048576
 #define RUSSIAN_ROULETTE_PROBABILITY 0.7
-#define DEBUG_LOG_GAP 1000
+//#define DEBUG_MODE
+
+//#define RENDER_MODE_IS
 
 /*****************************************
  *                                       *
@@ -26,8 +28,8 @@
 
 //#define SCENE_TEXTURE// 纹理场景
 //#define SCENE_CONELLBOX // 康奈尔盒子
-//#define SCENE_PBR// PBR 场景
-#define SCENE_MESH// Mesh 场景
+#define SCENE_PBR// PBR 场景
+//#define SCENE_MESH// Mesh 场景
 
 /*****************************************
  *                                       *
@@ -36,13 +38,25 @@
  *****************************************/
 
 //#define DEBUG_TRACERAY
-#define CONSOLE_OUTPUT_RENDER_PROGRESS
+//#define CONSOLE_OUTPUT_RENDER_PROGRESS
+//#define CONSOLE_OUTPUT_DEBUG_LINE
+
+#ifdef CONSOLE_OUTPUT_DEBUG_LINE
+#define DEBUG_LINE(log) std::cout << log << std::endl;
+#else
+#define DEBUG_LINE(log)
+#endif
+
+
 
 /*****************************************
  *                                       *
  *               DEBUG                   *
  *                                       *
  *****************************************/
+
+//#define RENDER_DEBUG_IMAGE
+
 //#define RENDER_DEBUG_NORMAL
 //#define RENDER_DEBUG_UV
 //#define RENDER_DEBUG_HITPOINT
@@ -53,6 +67,7 @@
 //#define RENDER_DEBUG_SHOW_ALBEDO
 //#define RENDER_DEBUG_SHOW_ROUGHNESS
 //#define RENDER_DEBUG_SHOW_METALLIC
+//#define RENDER_DEBUG_REFLECTION
 
 
 

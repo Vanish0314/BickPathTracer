@@ -1,7 +1,7 @@
 /*
  * @Author: Vanish
  * @Date: 2024-05-31 17:52:04
- * @LastEditTime: 2024-07-14 07:02:29
+ * @LastEditTime: 2024-09-05 19:02:14
  * Also View: http://vanishing.cc
  * Copyright@ https://creativecommons.org/licenses/by/4.0/deed.zh-hans
  */
@@ -103,7 +103,8 @@ public:
     {
         isEmissive = true;
     }
-    ~Material_PBM() {}
+    ~Material_PBM() {
+    }
 
 public:
     Vector3 Shade(Ray& ray_In, HitRecord& hitRecord) override;
@@ -119,8 +120,9 @@ public:
     /// @return 返回wo方向上计算了光照衰减（根据t）后的radiance
     Vector3 ReflectionTerm(Ray& ray,const Vector3& normal);
 
-private:
+public:
     Vector3 BRDF(Vector3 x, Vector3 wo, Vector3 wi,Vector3 normal);
+    Vector3 BRDF(Vector3 x, Vector3 wo, Vector3 wi,Vector3 normal,double u,double v);
     double NormalDistribution_GGX(Vector3 wi, Vector3 wo,Vector3 normal);
     double FresnelTerm_Schlick(Vector3 wi,Vector3 normal);
     double GeometryOcclusionTerm_Smith(Vector3 wo,Vector3 wi,Vector3 normal);

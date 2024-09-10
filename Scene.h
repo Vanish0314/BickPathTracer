@@ -1,7 +1,7 @@
 /*
  * @Author: Vanish
  * @Date: 2024-05-31 03:57:21
- * @LastEditTime: 2024-07-14 01:52:52
+ * @LastEditTime: 2024-09-04 14:53:44
  * Also View: http://vanishing.cc
  * Copyright@ https://creativecommons.org/licenses/by/4.0/deed.zh-hans
  */
@@ -22,6 +22,8 @@ public:
     ~Scene();
 public:
     void AddObject(Hittable* object);
+    int GetObjectCount() const {return objects.size();};
+    Hittable* GetObject(int index) const {return objects[index];};
 public:
     void Hit(Ray& ray, Interval interval, HitRecord &hitRecord) const;
 };

@@ -1,7 +1,7 @@
 /*
  * @Author: Vanish
  * @Date: 2024-05-31 23:13:43
- * @LastEditTime: 2024-07-13 02:13:48
+ * @LastEditTime: 2024-09-03 19:55:08
  * Also View: http://vanishing.cc
  * Copyright@ https://creativecommons.org/licenses/by/4.0/deed.zh-hans
  */
@@ -58,7 +58,7 @@ Vector3 Color::ToneMapping_ACES(Vector3 convertedRadiance)
     return result;
 }
 
-Color Color::GammaCorrection(Vector3 mappedRadiance,double gamma)
+Vector3 Color::GammaCorrection(Vector3 mappedRadiance,double gamma)
 {
     Vector3 gammaCorrected = Vector3(pow(mappedRadiance.x, 1.0 / gamma), pow(mappedRadiance.y, 1.0 / gamma), pow(mappedRadiance.z, 1.0 / gamma));
 
@@ -69,7 +69,6 @@ Color Color::GammaCorrection(Vector3 mappedRadiance,double gamma)
     gammaCorrected.y = std::min(255.0, gammaCorrected.y);
     gammaCorrected.z = std::min(255.0, gammaCorrected.z);
 
-    Color result = Color(gammaCorrected.x, gammaCorrected.y, gammaCorrected.z, 1.0);
-    result.Clamp();
+    Vector3 result = Vector3(gammaCorrected.x, gammaCorrected.y, gammaCorrected.z);
     return result ;
 }

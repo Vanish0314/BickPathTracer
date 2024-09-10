@@ -1,7 +1,7 @@
 /*
  * @Author: Vanish
  * @Date: 2024-05-31 03:57:21
- * @LastEditTime: 2024-07-14 06:35:20
+ * @LastEditTime: 2024-09-07 22:01:20
  * Also View: http://vanishing.cc
  * Copyright@ https://creativecommons.org/licenses/by/4.0/deed.zh-hans
  */
@@ -88,4 +88,5 @@ void Hit (Ray& ray ,const Interval interval,HitRecord& hitRecord)
 private:
     double GetUAt(const Vector3& hitPoint) const;
     double GetVAt(const Vector3& hitPoint) const;
+    SampleResult UnitSamplePdf() override;
 };

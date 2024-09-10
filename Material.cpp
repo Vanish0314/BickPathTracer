@@ -1,7 +1,7 @@
 /*
  * @Author: Vanish
  * @Date: 2024-06-02 04:28:38
- * @LastEditTime: 2024-07-14 06:24:18
+ * @LastEditTime: 2024-09-08 05:05:03
  * Also View: http://vanishing.cc
  * Copyright@ https://creativecommons.org/licenses/by/4.0/deed.zh-hans
  */
@@ -10,16 +10,35 @@
 
 double PDF::SampleHemisphere(Vector3 point,Ray& result,Vector3 normal)
 {
+    // double x ;
+    // double y ;
+    // double z ;
 
-    Vector3 randomVec = Vector3(0,0,0);
-    while (randomVec.Dot(normal) <= 0)
+    // do
+    // {
+    //     x = Random::GetRandomDouble(-1,1);
+    //     y = Random::GetRandomDouble(-1,1);
+    //     z = Random::GetRandomDouble(-1,1);
+    // }
+    // while(x == 0 && y == 0 && z == 0);
+
+    // Vector3 randomVec = Vector3(x,y,z);
+    // if(Vector3::Dot(randomVec, normal) < 0)
+    //     randomVec = Vector3(0,0,0) - randomVec;
+
+    double x,y,z;
+    std:: uniform_real_distribution<double> dis(-1,1);
+    do
     {
-        randomVec = Vector3(
-            Random::GetRandomDouble(-1,1),
-            Random::GetRandomDouble(-1,1),
-            Random::GetRandomDouble(-1,1)
-        );
-    }
+        x =  Random::GetRandomNormalDouble(-1.0,1.0);
+        y =  Random::GetRandomNormalDouble(-1.0,1.0);
+        z =  Random::GetRandomNormalDouble(-1.0,1.0);
+
+    }while (x == 0 && y == 0 && z == 0);
+
+    Vector3 randomVec = Vector3(x,y,z).Normalized();
+    if(Vector3::Dot(randomVec, normal) < 0)
+        randomVec = Vector3(0,0,0) - randomVec;
     
     result.origin = point + normal * 0.01;
     result.direction = randomVec.Normalized();
@@ -73,15 +92,54 @@ Vector3 Material_PBM::ReflectionTerm(Ray& ray,const Vector3& normal)
     Vector3 BRDF_Term = BRDF(x, wo, wi,normal);
     double  Cos_Term = std::max(0.0, Vector3::Dot(wi, normal));
     Li_Term = ray.Trace(Interval());
-    result = BRDF_Term * Li_Term * Cos_Term;
+    result = BRDF_Term * Li_Term * Cos_Term;  
     //result += 0.03 * Vector3(albedoBuffer.r, albedoBuffer.g, albedoBuffer.b) * ao;//环境光遮蔽
 
     if(result.Magnitude() == 0) return Vector3(0,0,0);
     return result;
 }
-
 Vector3 Material_PBM::BRDF(Vector3 x, Vector3 wo, Vector3 wi,Vector3 normal)
 {
+    /*
+        Cook-Torrance BRDF 方程
+        f = kd*f_lanbert + ks*f_cooktorrance
+
+        f_lanbert = albedoBuffer / pi
+        f_cooktorrance= D * F * G / denom
+
+        D: 法线分布函数
+        F: 菲涅尔方程
+        G: 几何遮蔽函数
+        denom: 辐射分母 = 4 * Dot(wo, normal) * Dot(wi, normal)
+    */
+
+    Vector3 Lambert;
+    Lambert.x = albedoBuffer.r / PI;
+    Lambert.y = albedoBuffer.g / PI;
+    Lambert.z = albedoBuffer.b / PI;
+    
+    double D = NormalDistribution_GGX(wi, wo, normal);
+    double F = FresnelTerm_Schlick(wi, normal);
+    double G = GeometryOcclusionTerm_Smith(wo, wi, normal);
+    double denom = 4 * Vector3::Dot(wo, normal) * Vector3::Dot(wi, normal) + 0.000001;//避免除0
+    
+    double ks = F;
+    double kd = 1 - ks;
+    kd *= (1 - metallicBuffer);
+
+    double CookTorrance_Term = D * F * G / denom;
+    Vector3 result = kd*Lambert + Vector3(CookTorrance_Term, CookTorrance_Term, CookTorrance_Term);
+    result = Vector3(
+        std::min(result.x, 1.0),
+        std::min(result.y, 1.0),
+        std::min(result.z, 1.0)
+    );//防止能量爆炸
+
+    return result;
+}
+Vector3 Material_PBM::BRDF(Vector3 x, Vector3 wo, Vector3 wi,Vector3 normal,double u, double v)
+{
+    UpdateBuffer(u, v);
     /*
         Cook-Torrance BRDF 方程
         f = kd*f_lanbert + ks*f_cooktorrance

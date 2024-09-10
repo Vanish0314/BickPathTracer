@@ -1,13 +1,14 @@
 /*
  * @Author: Vanish
  * @Date: 2024-06-01 20:54:31
- * @LastEditTime: 2024-07-14 04:40:41
+ * @LastEditTime: 2024-09-07 23:03:39
  * Also View: http://vanishing.cc
  * Copyright@ https://creativecommons.org/licenses/by/4.0/deed.zh-hans
  */
 #pragma once
 
 #include "Hittable.h"
+#include "SpinLock.h"
 
 /// @brief 隐式表达的四边形类；定义position为起始点；u，v为两个非单位方向向量，表示方向与长度；normal存储了法向量
 class Quad :public Hittable
@@ -29,9 +30,19 @@ public:
             D = Vector3::Dot(startPoint,normal); // 计算平面方程的常数项
         }
     ~Quad(){};
+
+    SampleResult UnitSamplePdf() override
+    {
+        double x = Random::GetRandomDouble(0,1);
+        double y = Random::GetRandomDouble(0,1);
+        Vector3 p = startPoint + u*x + v*y;
+        double pdf = 1.0 / (2*u.Magnitude()*v.Magnitude());
+        return SampleResult{p,normal,pdf};
+    }
 public:
     void Hit(Ray& ray ,const Interval interval,HitRecord& hitRecord) override
     {
+        
         // Ray-Quad intersection algorithm
         // 第零步，不与背对的Plane相交
         float dotProduct =ray.direction.Dot(normal);
@@ -58,7 +69,7 @@ public:
 
         // 设置其他信息
         hitRecord.t = t;
-        hitRecord.normal = normal;//Vector3::Dot(ray.direction,normal) < 0? Vector3(0,0,0)-normal : normal;
+        hitRecord.normal = Vector3::Dot(ray.direction,normal) < 0? normal : Vector3(0,0,0)-normal ;
         hitRecord.hitPoint = intersectionPoint;
         hitRecord.isFrontFace =Vector3::Dot(ray.direction,normal) < 0? false : true;
         hitRecord.material = material;
@@ -105,7 +116,23 @@ inline std::vector<Quad*> Box(const Vector3& a, const Vector3& b, std::shared_pt
         Quad* quad5 = new Quad( name + "_top"    ,Vector3(min.x,max.y,min.z),dz,dx,material);
         Quad* quad6 = new Quad( name + "_bottom" ,Vector3(min.x,min.y,min.z),dx,dz,material);
 
+
+
         std::vector<Quad*> quads = {quad1,quad2,quad3,quad4,quad5,quad6};
         return quads;
 
+}
+
+inline std::vector<Quad*> Box(const Vector3& startPoint, const Vector3& length, const Vector3& width, const Vector3& height, std::shared_ptr<Material> material,std::string name)
+{
+
+        Quad* front = new Quad( name + "_front"  ,startPoint,height,length,material);
+        Quad* right = new Quad( name + "_right"  ,startPoint+length,height,width,material);
+        Quad* back = new Quad( name + "_back"   ,startPoint+width,length,height,material);
+        Quad* left = new Quad( name + "_left"   ,startPoint,width,height,material);
+        Quad* top = new Quad( name + "_top"    ,startPoint+height,width,length,material);
+        Quad* bottom = new Quad( name + "_bottom" ,startPoint,length,width,material);
+
+        std::vector<Quad*> quads = {front,right,back,left,top,bottom};
+        return quads;
 }

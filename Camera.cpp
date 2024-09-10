@@ -1,7 +1,7 @@
 /*
  * @Author: Vanish
  * @Date: 2024-05-31 03:57:26
- * @LastEditTime: 2024-07-14 06:04:06
+ * @LastEditTime: 2024-09-03 20:12:16
  * Also View: http://vanishing.cc
  * Copyright@ https://creativecommons.org/licenses/by/4.0/deed.zh-hans
  */
@@ -13,7 +13,6 @@ void Camera::Render(const Scene &scene, std::ostream &output)
     // 写入ppm文件头
     WriteFileHeader(output);
 
-    Color color = Color(0, 0, 0, 1);
     Vector3 radiance = Vector3(0, 0, 0);
 
     double progress = 0;
@@ -53,13 +52,12 @@ void Camera::Render(const Scene &scene, std::ostream &output)
 #endif
             }
             radiance = radiance / samplesPerPixel;
-            color = RadianceToColor(radiance);
+            Vector3 color = RadianceToColor(radiance);
 #ifdef DEBUG_TRACERAY
             if(Random::consoleOutPutEnable)
                 std::cout << "\033[31m" << "像素最终结果:【" << ((color.r * 255 > 1) ? color.r * 255 : 0) << "," << ((color.g * 255) > 1 ? color.g * 255 : 0) << "," << ((color.b * 255) > 1 ? color.b * 255 : 0) << "】" << "\033[m" << std::endl;
 #endif
             WritePixelColor(output, color);
-            color = Color(0, 0, 0, 1);
             radiance = Vector3(0, 0, 0);
         }
     }
@@ -88,9 +86,9 @@ void Camera::GetRay(int pixelIndexX, int pixelIndexY, Ray &ray)
 /// @param scene 场景
 /// @param pixelIndex 像素索引
 /// @return 返回该像素的颜色
-Color Camera::RadianceToColor(Vector3 radiance)
+Vector3 Camera::RadianceToColor(Vector3 radiance)
 {   
-    if(Debuger::DebugMode()) return Color(radiance.x, radiance.y, radiance.z, 1);
+    if(Debuger::DebugMode()) return Vector3(radiance.x, radiance.y, radiance.z);
     // // 计算辐照度
     // Vector3 radiance;
     // radiance = ray.Trace(Interval());
@@ -99,25 +97,21 @@ Color Camera::RadianceToColor(Vector3 radiance)
     //Step1: 将SPD转换到XYZ空间 这里不做变换
     Vector3 XYZ = radiance;
     //Step2: XYZ TO RGB
-    Vector3 RGB = Color::XYZToRGB(XYZ);
-    //Step3: 色调映射
+    Vector3 RGB = Color::XYZToRGB(XYZ);    //Step3: 色调映射
     Vector3 TomeMapped = Color::ToneMapping_ACES(RGB);
     //Step4: 伽马校正
-    Color GammaCorrected = Color::GammaCorrection(RGB, 1.0 / 2.2);
+    Vector3 GammaCorrected = Color::GammaCorrection(RGB, 1.0 / 2.2);
     
-    return GammaCorrected;
-    
+    return Vector3((int)GammaCorrected.x * 255, (int)GammaCorrected.y * 255, (int)GammaCorrected.z * 255);
 }
 
-void Camera::WritePixelColor(std::ostream &output, Color &color)
+void Camera::WritePixelColor(std::ostream &output, Vector3 &color)
 {
-    if(Debuger::DebugMode()) {output << color.r << " " <<color.g<< " " << color.b<< "\n"; return;}
+    if(Debuger::DebugMode()) {output << color.x << " " <<color.y<< " " << color.z<< "\n"; return;}
 
-    if(color.r == 0 && color.g == 0 && color.b == 0)
+    if(color.x == 0 && color.y == 0 && color.z == 0)
     {
         Vector3 black = Vector3(0, 0, 0);
     }
-    
-    color.Clamp();
-    output << (int)(color.r * 255) << " " << (int)(color.g * 255) << " " << (int)(color.b * 255) << "\n";
+    output << (int)(color.x * 255) << " " << (int)(color.y* 255) << " " << (int)(color.z * 255) << "\n";
 }

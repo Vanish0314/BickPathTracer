@@ -6,8 +6,10 @@
             "command": "C:\\msys64\\ucrt64\\bin\\g++.exe",
             "args": [
                 "-fdiagnostics-color=always",
+                "-o3",//优化级别
                 "-g",
-                "${workspaceFolder}\\*.cpp",
+                "${workspaceFolder}\\*.cpp","${workspaceFolder}\\3rd\\imgui\\*.cpp",
+                "-I${workspaceFolder}\\3rd\\imgui",
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}.exe"
             ],

@@ -1,7 +1,7 @@
 /*
  * @Author: Vanish
  * @Date: 2024-05-31 03:57:21
- * @LastEditTime: 2024-07-14 12:56:38
+ * @LastEditTime: 2024-09-03 20:13:12
  * Also View: http://vanishing.cc
  * Copyright@ https://creativecommons.org/licenses/by/4.0/deed.zh-hans
  */
@@ -61,11 +61,11 @@ public:
 public:
 	void Render(const Scene& scene,std::ostream& output);
 
-private:
+public:
 	void WriteFileHeader(std::ostream& output);
 	void GetRay(int pixelIndexX,int pixelIndexY,Ray& ray);
-	Color RadianceToColor(Vector3 radiance);
-	void WritePixelColor(std::ostream& output,Color& color);
+	Vector3 RadianceToColor(Vector3 radiance);
+	void WritePixelColor(std::ostream& output,Vector3& color);
 
 private:
 	Vector3 pixel_00_Location;// 视角坐标系原点，位于画布左上角,00像素的中心位置

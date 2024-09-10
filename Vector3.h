@@ -1,7 +1,7 @@
 /*
  * @Author: Vanish
  * @Date: 2024-05-31 03:57:21
- * @LastEditTime: 2024-07-14 04:04:58
+ * @LastEditTime: 2024-09-08 04:57:10
  * Also View: http://vanishing.cc
  * Copyright@ https://creativecommons.org/licenses/by/4.0/deed.zh-hans
  */
@@ -14,6 +14,7 @@
 
 class Vector3
 {
+    
 public:
     double x =0, y = 0, z = 0;
 public:
@@ -34,6 +35,10 @@ public:
         y += other.y;
         z += other.z;
         return *this;
+    }
+    bool operator== (const Vector3& other) const
+    {
+        return x == other.x && y == other.y && z == other.z;
     }
     Vector3 operator-(const Vector3& other) const
     {
@@ -61,6 +66,18 @@ public:
         y /= scalar.y;
         z /= scalar.z;
         return *this;
+    }
+    double operator[](int index) const
+    {
+        switch (index)
+        {
+        case 0:
+            return x;
+        case 1:
+            return y;
+        case 2:
+            return z;
+        }
     }
     double Magnitude() const
     {
@@ -90,11 +107,18 @@ public:
 
     Vector3 Cross(const Vector3& other) const
     {
-        //左手坐标系
+        //右手坐标系下叉乘
         return Vector3(
-            y * other.z - z * other.y,
-            z * other.x - x * other.z,
-            x * other.y - y * other.x
+            y*other.z - z*other.y,
+            z*other.x - x*other.z,
+            x*other.y - y*other.x
+        );
+
+        //左手坐标系下叉乘
+        return Vector3(
+           y*other.z - z*other.y,
+           x*other.z - z*other.x,
+           x*other.y - y*other.x
         );
     }
 public:
@@ -197,6 +221,24 @@ public:
             v = Vector3(0, 0, 0) - v;
         }
         return v;
+    }
+
+    static Vector3 Min(const Vector3& a, const Vector3& b)
+    {
+        return Vector3(
+            std::min(a.x, b.x),
+            std::min(a.y, b.y),
+            std::min(a.z, b.z)
+        );
+    }
+
+    static Vector3 Max(const Vector3& a, const Vector3& b)
+    {
+        return Vector3(
+            std::max(a.x, b.x),
+            std::max(a.y, b.y),
+            std::max(a.z, b.z)
+        );
     }
 
 };

@@ -1,7 +1,7 @@
 /*
  * @Author: Vanish
  * @Date: 2024-07-14 01:17:14
- * @LastEditTime: 2024-07-14 07:03:45
+ * @LastEditTime: 2024-09-03 20:21:47
  * Also View: http://vanishing.cc
  * Copyright@ https://creativecommons.org/licenses/by/4.0/deed.zh-hans
  */
@@ -37,6 +37,9 @@ bool Debuger::DebugMode()
     return true;
 #endif
 #ifdef RENDER_DEBUG_SHOW_METALLIC
+    return true;
+#endif
+#ifdef RENDER_DEBUG_REFLECTION
     return true;
 #endif
 
@@ -183,6 +186,8 @@ Vector3 Debuger::DebugResult(Ray& ray)
     return Vector3(metalic, metalic, metalic) * 255;
 #endif
 
-
+#ifdef RENDER_DEBUG_REFLECTION
+    
+#endif
 
 }

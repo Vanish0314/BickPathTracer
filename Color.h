@@ -25,7 +25,7 @@ public:
 	static Vector3 Linear_To_SRGB(Vector3 radiance);
     static Vector3 XYZToRGB(Vector3 XYZ);
  	static Vector3 ToneMapping_ACES(Vector3 convertedRadiance);
-	static Color GammaCorrection(Vector3 mappedRadiance, double gamma);
+	static Vector3 GammaCorrection(Vector3 mappedRadiance, double gamma);
 
 public:
     Color& operator+=(const Color& other)

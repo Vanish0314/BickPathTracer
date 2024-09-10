@@ -58,7 +58,16 @@
         "chrono": "cpp",
         "ratio": "cpp",
         "map": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "condition_variable": "cpp",
+        "list": "cpp",
+        "mutex": "cpp",
+        "semaphore": "cpp",
+        "stop_token": "cpp",
+        "thread": "cpp",
+        "cinttypes": "cpp",
+        "codecvt": "cpp",
+        "future": "cpp"
     },
     "C_Cpp.default.compilerPath": "C:\\msys64\\ucrt64\\bin\\g++.exe"
 }
