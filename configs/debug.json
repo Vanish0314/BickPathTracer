@@ -1,0 +1,23 @@
+{
+  "render_settings": {
+    "sample_count": 256,
+    "image_width": 512,
+    "image_height": 512,
+    "russian_roulette_prob": 0.7,
+    "thread_count": 1,
+    "enable_importance_sampling": false,
+    "enable_sah": false,
+    "output_path": "output/images/debug_result.ppm",
+    "debug_mode": true,
+    "debug_output_dir": "output/debug/",
+    "render_debug_images": true,
+    "show_render_progress": true
+  },
+  "camera": {
+    "camera_position": [2.8, 2.5, -2.6],
+    "camera_direction": [0.0, 0.0, 1.0],
+    "camera_up": [0.0, 1.0, 0.0],
+    "camera_fov": 60.0
+  },
+  "scene_config": "cornell_box"
+}

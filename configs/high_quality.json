@@ -1,0 +1,23 @@
+{
+  "render_settings": {
+    "sample_count": 4096,
+    "image_width": 1024,
+    "image_height": 1024,
+    "russian_roulette_prob": 0.7,
+    "thread_count": 0,
+    "enable_importance_sampling": true,
+    "enable_sah": true,
+    "output_path": "output/images/high_quality_result.ppm",
+    "debug_mode": false,
+    "debug_output_dir": "output/debug/",
+    "render_debug_images": false,
+    "show_render_progress": true
+  },
+  "camera": {
+    "camera_position": [3.0, 3.0, -4.0],
+    "camera_direction": [0.0, 0.0, 1.0],
+    "camera_up": [0.0, 1.0, 0.0],
+    "camera_fov": 90.0
+  },
+  "scene_config": "pbr_demo"
+}
