@@ -1,7 +1,7 @@
 /*
  * @Author: Vanish
  * @Date: 2025-09-10 21:20:00
- * @LastEditTime: 2025-09-10 21:39:49
+ * @LastEditTime: 2025-09-10 23:57:30
  * Also View: http://vanishing.cc
  * Copyright@ https://creativecommons.org/licenses/by/4.0/deed.zh-hans
  */
@@ -18,6 +18,7 @@
 #include "../math/Vector3.h"
 #include <fstream>
 #include <sstream>
+#include <cmath>
 
 std::unique_ptr<Scene> SceneFactory::CreateScene(SceneType type) {
     switch (type) {
@@ -74,37 +75,77 @@ std::unique_ptr<Scene> SceneFactory::CreateSceneFromDesc(const SceneDesc& desc) 
 std::unique_ptr<Scene> SceneFactory::CreateCornellBoxScene() {
     auto scene = std::make_unique<Scene>();
     
-    // 创建材质
-    auto white = std::make_shared<Material_PBM>(Color(1, 1, 1, 1), 1, 0);
-    auto red = std::make_shared<Material_PBM>(Color(1, 0, 0, 1), 1, 0);
-    auto blue = std::make_shared<Material_PBM>(Color(0, 0, 1, 1), 1, 0);
-    auto light = std::make_shared<Material_PBM>(Vector3(1, 1, 1), 80);
+    // 创建材质 - 使用标准康奈尔盒子颜色
+    auto white = std::make_shared<Material_PBM>(Color(0.73, 0.73, 0.73, 1), 1.0, 0.0);  // 漫反射白色
+    auto red = std::make_shared<Material_PBM>(Color(0.65, 0.05, 0.05, 1), 1.0, 0.0);    // 漫反射红色
+    auto blue = std::make_shared<Material_PBM>(Color(0.05, 0.05, 0.65, 1), 1.0, 0.0);   // 漫反射蓝色
+    auto light = std::make_shared<Material_PBM>(Vector3(15, 15, 10), 50);               // 面光源
     
-    // 创建Cornell Box的墙壁
-    auto leftWall = new Sphere("LeftWall", 10000, Vector3(-10000, 5.55/2, 5.55/2), red);
-    auto rightWall = new Sphere("RightWall", 10000, Vector3(5.55 + 10000, 5.55/2, 5.55/2), blue);
-    auto floor = new Sphere("Floor", 10000, Vector3(0, -10000, 0), white);
-    auto ceiling = new Sphere("Ceiling", 10000, Vector3(0, 5.55 + 10000, 0), white);
-    auto backWall = new Sphere("BackWall", 10000, Vector3(5.55/2, 5.55/2, 10000 + 5.55), white);
+    // 创建Cornell Box的墙壁 - 使用四边形而不是巨大球体
+    // 盒子尺寸: 5.55 x 5.55 x 5.55
+    double boxSize = 5.55;
     
-    // 创建光源
-    auto sphereLight = new Sphere("Light", 0.2, Vector3(5.55/2, 5.55/2, 5.55/2), light);
+    // 左墙（红色） - 法线指向右
+    auto leftWall = new Quad("LeftWall", 
+        Vector3(0, 0, 0), 
+        Vector3(0, 0, boxSize), 
+        Vector3(0, boxSize, 0), 
+        red);
     
-    // 创建两个小立方体
-    // 第一个立方体 - 较高的白色立方体（左侧）
-    auto tallBoxQuads = Box(
-        Vector3(1, 0, 3),
-        Vector3(2, 2, 4),
+    // 右墙（蓝色） - 法线指向左
+    auto rightWall = new Quad("RightWall", 
+        Vector3(boxSize, 0, 0), 
+        Vector3(0, 0, boxSize), 
+        Vector3(0, boxSize, 0), 
+        blue);
+    
+    // 地板（白色） - 法线指向上
+    auto floor = new Quad("Floor", 
+        Vector3(0, 0, 0), 
+        Vector3(boxSize, 0, 0), 
+        Vector3(0, 0, boxSize), 
+        white);
+    
+    // 天花板（白色） - 法线指向下
+    auto ceiling = new Quad("Ceiling", 
+        Vector3(0, boxSize, 0), 
+        Vector3(boxSize, 0, 0), 
+        Vector3(0, 0, boxSize), 
+        white);
+    
+    // 后墙（白色） - 法线指向前
+    auto backWall = new Quad("BackWall", 
+        Vector3(0, 0, boxSize), 
+        Vector3(boxSize, 0, 0), 
+        Vector3(0, boxSize, 0), 
+        white);
+    
+    // 创建天花板上的面光源
+    double lightSize = 1.3;
+    double lightOffset = (boxSize - lightSize) / 2;
+    auto areaLight = new Quad("AreaLight", 
+        Vector3(lightOffset, boxSize - 0.01, lightOffset), 
+        Vector3(lightSize, 0, 0), 
+        Vector3(0, 0, lightSize), 
+        light);
+    
+    // 创建两个立方体，并进行旋转
+    // 高立方体（左后方，旋转18度）
+    auto tallBoxQuads = CreateRotatedBox(
+        Vector3(1.5, 0, 3.5),     // 起始位置（更靠后）
+        Vector3(1.5, 2.8, 1.5), // 尺寸
+        Vector3(0, 18, 0),        // 旋转角度（Y轴18度）
         white,
-        "高粗箱子"
+        "TallBox"
     );
     
-    // 右侧物体改为一个较小的白色球体
-    auto rightSmallSphere = new Sphere(
-        "RightSmallSphere",
-        0.5,                              // 半径
-        Vector3(4.0, 0.5, 2.5),           // 位置（与原右侧矮箱子中心一致）
-        white
+    // 矮立方体（右前方，旋转-18度）
+    auto shortBoxQuads = CreateRotatedBox(
+        Vector3(4, 0, 2.0),     // 起始位置（更靠前）
+        Vector3(1.1, 1.1, 1.1), // 尺寸
+        Vector3(0, -18, 0),       // 旋转角度（Y轴-18度）
+        white,
+        "ShortBox"
     );
     
     // 添加到场景
@@ -113,14 +154,15 @@ std::unique_ptr<Scene> SceneFactory::CreateCornellBoxScene() {
     scene->AddObject(floor);
     scene->AddObject(ceiling);
     scene->AddObject(backWall);
-    scene->AddObject(sphereLight);
+    scene->AddObject(areaLight);
     
     // 添加立方体的所有面
     for (auto quad : tallBoxQuads) {
         scene->AddObject(quad);
     }
-    // 添加右侧小球
-    scene->AddObject(rightSmallSphere);
+    for (auto quad : shortBoxQuads) {
+        scene->AddObject(quad);
+    }
     
     return scene;
 }
@@ -377,4 +419,61 @@ bool SceneFactory::SaveSceneDesc(const std::string& configPath, const SceneDesc&
     // 这里实现场景描述文件保存
     // 由于时间限制，暂时返回true
     return true;
+}
+
+std::vector<Quad*> SceneFactory::CreateRotatedBox(const Vector3& position, const Vector3& size, 
+                                                   const Vector3& rotation, std::shared_ptr<Material_PBM> material, 
+                                                   const std::string& name) {
+    // 计算旋转矩阵（简化版本，只支持Y轴旋转）
+    double angleRad = rotation.y * M_PI / 180.0;
+    double cosA = cos(angleRad);
+    double sinA = sin(angleRad);
+    
+    // 盒子的8个顶点（相对于中心）
+    Vector3 halfSize = size * 0.5;
+    std::vector<Vector3> vertices = {
+        Vector3(-halfSize.x, -halfSize.y, -halfSize.z),
+        Vector3( halfSize.x, -halfSize.y, -halfSize.z),
+        Vector3( halfSize.x, -halfSize.y,  halfSize.z),
+        Vector3(-halfSize.x, -halfSize.y,  halfSize.z),
+        Vector3(-halfSize.x,  halfSize.y, -halfSize.z),
+        Vector3( halfSize.x,  halfSize.y, -halfSize.z),
+        Vector3( halfSize.x,  halfSize.y,  halfSize.z),
+        Vector3(-halfSize.x,  halfSize.y,  halfSize.z)
+    };
+    
+    // 应用旋转和平移
+    Vector3 center = position + Vector3(0, halfSize.y, 0); // 底部中心点
+    for (auto& vertex : vertices) {
+        // Y轴旋转
+        double x = vertex.x * cosA - vertex.z * sinA;
+        double z = vertex.x * sinA + vertex.z * cosA;
+        vertex.x = x;
+        vertex.z = z;
+        // 平移到最终位置
+        vertex = vertex + center;
+    }
+    
+    std::vector<Quad*> quads;
+    
+    // 创建6个面
+    // 底面 (0,1,2,3)
+    quads.push_back(new Quad(name + "_bottom", vertices[0], vertices[1] - vertices[0], vertices[3] - vertices[0], material));
+    
+    // 顶面 (4,7,6,5)
+    quads.push_back(new Quad(name + "_top", vertices[4], vertices[7] - vertices[4], vertices[5] - vertices[4], material));
+    
+    // 前面 (0,4,5,1)
+    quads.push_back(new Quad(name + "_front", vertices[0], vertices[4] - vertices[0], vertices[1] - vertices[0], material));
+    
+    // 后面 (2,6,7,3)
+    quads.push_back(new Quad(name + "_back", vertices[2], vertices[6] - vertices[2], vertices[3] - vertices[2], material));
+    
+    // 左面 (3,7,4,0)
+    quads.push_back(new Quad(name + "_left", vertices[3], vertices[7] - vertices[3], vertices[0] - vertices[3], material));
+    
+    // 右面 (1,5,6,2)
+    quads.push_back(new Quad(name + "_right", vertices[1], vertices[5] - vertices[1], vertices[2] - vertices[1], material));
+    
+    return quads;
 }

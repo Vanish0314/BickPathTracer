@@ -11,42 +11,30 @@
 
 double PDF::SampleHemisphere(Vector3 point,Ray& result,Vector3 normal)
 {
-    // double x ;
-    // double y ;
-    // double z ;
-
-    // do
-    // {
-    //     x = Random::GetRandomDouble(-1,1);
-    //     y = Random::GetRandomDouble(-1,1);
-    //     z = Random::GetRandomDouble(-1,1);
-    // }
-    // while(x == 0 && y == 0 && z == 0);
-
-    // Vector3 randomVec = Vector3(x,y,z);
-    // if(Vector3::Dot(randomVec, normal) < 0)
-    //     randomVec = Vector3(0,0,0) - randomVec;
-
-    double x,y,z;
-    std:: uniform_real_distribution<double> dis(-1,1);
-    do
-    {
-        x =  Random::GetRandomNormalDouble(-1.0,1.0);
-        y =  Random::GetRandomNormalDouble(-1.0,1.0);
-        z =  Random::GetRandomNormalDouble(-1.0,1.0);
-
-    }while (x == 0 && y == 0 && z == 0);
-
-    Vector3 randomVec = Vector3(x,y,z).Normalized();
-    if(Vector3::Dot(randomVec, normal) < 0)
-        randomVec = Vector3(0,0,0) - randomVec;
+    // 余弦加权半球采样
+    double r1 = Random::GetRandomDouble(0, 1);
+    double r2 = Random::GetRandomDouble(0, 1);
     
-    result.origin = point + normal * 0.01;
-    result.direction = randomVec.Normalized();
+    // 极坐标采样
+    double cosTheta = sqrt(r1);
+    double sinTheta = sqrt(1 - r1);
+    double phi = 2 * BickConstants::PI * r2;
+    
+    // 局部坐标系
+    Vector3 w = normal;
+    Vector3 u = ((abs(w.x) > 0.1) ? Vector3(0, 1, 0) : Vector3(1, 0, 0)).Cross(w).Normalized();
+    Vector3 v = w.Cross(u);
+    
+    // 转换到世界坐标
+    Vector3 direction = u * (cos(phi) * sinTheta) + v * (sin(phi) * sinTheta) + w * cosTheta;
+    
+    result.origin = point + normal * 1e-4;
+    result.direction = direction.Normalized();
     result.depth++;
     result.t = 0;
 
-    double PDF_Term = 1 / (2 * BickConstants::PI);
+    // 余弦加权采样的PDF = cosθ/π (physically correct)
+    double PDF_Term = cosTheta / BickConstants::PI;
     return PDF_Term;
 }
 
@@ -98,11 +86,22 @@ Vector3 Material_PBM::ReflectionTerm(Ray& ray,const Vector3& normal)
 }
 Vector3 Material_PBM::BRDF(Vector3 x, Vector3 wo, Vector3 wi,Vector3 normal)
 {
+    // 对于Cornell box场景，使用简单的Lambertian BRDF
+    // 如果roughness接近1.0且metallic接近0.0，则使用纯漫反射
+    if (roughnessBuffer >= 0.9 && metallicBuffer <= 0.1) {
+        // Pure Lambertian diffuse BRDF
+        Vector3 Lambert;
+        Lambert.x = albedoBuffer.r / BickConstants::PI;
+        Lambert.y = albedoBuffer.g / BickConstants::PI;
+        Lambert.z = albedoBuffer.b / BickConstants::PI;
+        return Lambert;
+    }
+    
     /*
         Cook-Torrance BRDF 方程
         f = kd*f_lanbert + ks*f_cooktorrance
 
-        f_lanbert = albedoBuffer / pi
+        f_lanbert = albedoBuffer / pi (physically correct)
         f_cooktorrance= D * F * G / denom
 
         D: 法线分布函数
@@ -142,7 +141,7 @@ Vector3 Material_PBM::BRDF(Vector3 x, Vector3 wo, Vector3 wi,Vector3 normal,doub
         Cook-Torrance BRDF 方程
         f = kd*f_lanbert + ks*f_cooktorrance
 
-        f_lanbert = albedoBuffer / pi
+        f_lanbert = albedoBuffer / pi (physically correct)
         f_cooktorrance= D * F * G / denom
 
         D: 法线分布函数
@@ -177,29 +176,33 @@ Vector3 Material_PBM::BRDF(Vector3 x, Vector3 wo, Vector3 wi,Vector3 normal,doub
 }
 double Material_PBM::NormalDistribution_GGX(Vector3 wi, Vector3 wo,Vector3 normal)
 {
+    // 计算半向量
+    Vector3 h = (wi + wo).Normalized();
+    double NdotH = std::max(0.0, Vector3::Dot(normal, h));
+    
     double alpha = roughnessBuffer * roughnessBuffer;
     double alpha2 = alpha * alpha;
-    double cos = Vector3::Dot(wi, normal);
-    double cos2 = cos * cos;
+    double NdotH2 = NdotH * NdotH;
 
     double num = alpha2;
-    double denom = (cos2 * (alpha2 - 1) + 1);
+    double denom = (NdotH2 * (alpha2 - 1) + 1);
     denom = BickConstants::PI * denom * denom;
 
-    return num / denom;
+    return num / (denom + 1e-7); // 避免除零
 }
 
 double Material_PBM::FresnelTerm_Schlick(Vector3 wi,Vector3 normal)
 {
     // Schlick近似公式 f = f0 + (1-f0)(1-cosθ)^5
-    // 其中：
-    // f0:  金属度 ，位于0.04-1之间
-    // θ: 入射光线与法线夹角
+    // 使用半向量计算菲涅尔项
+    Vector3 wo = Vector3(0, 0, 0) - wi; // 观察方向
+    Vector3 h = (wi + wo).Normalized();
+    double HdotV = std::max(0.0, Vector3::Dot(h, wo));
 
     double f0 = 0.04;
     f0 = f0 + (1 - f0) * metallicBuffer;
 
-    return f0 + (1 - f0) * std::pow(1 - Vector3::Dot(wi, normal), 5);
+    return f0 + (1 - f0) * std::pow(1 - HdotV, 5);
 }
 
 double Material_PBM::GeometryOcclusionTerm_Smith(Vector3 wo,Vector3 wi,Vector3 normal)

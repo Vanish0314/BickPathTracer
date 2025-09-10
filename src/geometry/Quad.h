@@ -36,7 +36,8 @@ public:
         double x = Random::GetRandomDouble(0,1);
         double y = Random::GetRandomDouble(0,1);
         Vector3 p = startPoint + u*x + v*y;
-        double pdf = 1.0 / (2*u.Magnitude()*v.Magnitude());
+        double area = u.Cross(v).Magnitude();
+        double pdf = 1.0 / area;
         return SampleResult{p,normal,pdf};
     }
 public:
@@ -44,9 +45,9 @@ public:
     {
         
         // Ray-Quad intersection algorithm
-        // 第零步，不与背对的Plane相交
+        // 第零步，计算射线与平面的交点
         float dotProduct =ray.direction.Dot(normal);
-        if (dotProduct > 0)// 1e-6是个极小数，表示平行的阈值
+        if (abs(dotProduct) < 1e-6)// 射线与平面平行
         {
             hitRecord.hitted = false;
             return;

@@ -90,6 +90,9 @@ private:
     static std::shared_ptr<Hittable> CreateQuad(const ObjectDesc& desc, std::shared_ptr<Material_PBM> material);
     static std::vector<std::shared_ptr<Hittable>> CreateBox(const ObjectDesc& desc, std::shared_ptr<Material_PBM> material);
     static std::shared_ptr<Hittable> CreateMesh(const ObjectDesc& desc, std::shared_ptr<Material_PBM> material);
+    static std::vector<class Quad*> CreateRotatedBox(const class Vector3& position, const class Vector3& size, 
+                                                     const class Vector3& rotation, std::shared_ptr<Material_PBM> material, 
+                                                     const std::string& name);
     
     // 场景类型字符串转换
     static SceneType StringToSceneType(const std::string& typeStr);

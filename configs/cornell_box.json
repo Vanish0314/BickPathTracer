@@ -1,6 +1,6 @@
 {
   "render_settings": {
-    "sample_count": 128,
+    "sample_count": 2048,
     "image_width": 1024,
     "image_height": 1024,
     "russian_roulette_prob": 0.7,

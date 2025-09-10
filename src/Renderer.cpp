@@ -7,8 +7,11 @@
  */
 
 #include "BickPathTracer.h"
+#include "material/SimpleMaterial.h"
 #include <thread>
 #include <iomanip>
+#include <algorithm>
+#include <map>
 
 // 定义全局变量（为了兼容旧代码）
 Scene* g_Scene = nullptr;
@@ -97,27 +100,23 @@ bool Renderer::Render() {
         m_threadPool->ParallelFor(m_config.render.imageWidth, m_config.render.imageHeight, 
             [&](int i, int j) {
                 for (int s = 0; s < increaseStep; s++) {
-                    if (currentSamples >= m_config.render.sampleCount) break;
+                    if (currentSamples + s >= m_config.render.sampleCount) break;
                     
                     Vector3 radiance = Vector3(0, 0, 0);
                     Ray ray = Ray(Vector3(0, 0, 0), Vector3(0, 0, 0));
                     m_camera->GetRay(i, j, ray);
                     
                     HitRecord hitRecord;
-                    m_scene->Hit(ray, Interval(), hitRecord);
-                    if (!hitRecord.hitted) break;
+                    m_scene->Hit(ray, Interval(1e-4, 1e10), hitRecord);
                     
-                    auto material = std::dynamic_pointer_cast<Material_PBM>(hitRecord.material);
-                    if (!material) break;
+                    // 直接使用新的路径追踪算法
+                    radiance = PathTrace(ray, 0);
                     
-                    radiance = Shade(hitRecord.hitPoint, Vector3(0, 0, 0) - ray.direction, 
-                                   hitRecord.normal, hitRecord.t, material);
-                    
-                    // Clamp radiance
+                    // 颜色clamp，避免过亮或负值
                     radiance = Vector3(
-                        std::max(0.0, std::min(radiance.x, maxLi.x)),
-                        std::max(0.0, std::min(radiance.y, maxLi.y)),
-                        std::max(0.0, std::min(radiance.z, maxLi.z))
+                        std::max(0.0, std::min(radiance.x, 10.0)),
+                        std::max(0.0, std::min(radiance.y, 10.0)),
+                        std::max(0.0, std::min(radiance.z, 10.0))
                     );
                     
                     film.AddSample(i, j, radiance);
@@ -149,75 +148,142 @@ void Renderer::Cleanup() {
     m_threadPool.reset();
 }
 
-Vector3 Renderer::Shade(const Vector3& p, const Vector3& wo, const Vector3& normal, 
-                        double t, std::shared_ptr<Material_PBM> material) {
-    if (material->isEmissive) {
-        return material->EmissiveTerm(wo, p) * Vector3::Dot(wo, normal) / m_config.render.russianRouletteProb;
+// 新的路径追踪渲染函数，基于参考项目的正确实现
+Vector3 Renderer::PathTrace(Ray ray, int depth) {
+    const int MAX_DEPTH = 10;
+    Vector3 beta(1, 1, 1);  // 路径权重
+    Vector3 L(0, 0, 0);     // 累积辐射度
+    bool last_is_specular = true;
+    
+    for (int bounces = 0; bounces < MAX_DEPTH; bounces++) {
+        HitRecord hitRecord;
+        m_scene->Hit(ray, Interval(1e-4, 1e10), hitRecord);
+        
+        if (!hitRecord.hitted) {
+            break; // 没有击中任何物体
+        }
+        
+        // 转换为简化材质
+        SimpleDiffuseMaterial* simpleMat = GetSimpleMaterial(hitRecord.material);
+        if (!simpleMat) break;
+        
+        // 如果击中光源，累积发光
+        if (simpleMat->isEmissive) {
+            L = L + beta * simpleMat->getEmission();
+            break;
+        }
+        
+        // 俄罗斯轮盘赌终止
+        if (bounces > 3) {
+            double q = std::max(0.05, 1.0 - std::max({beta.x, beta.y, beta.z}));
+            if (Random::GetRandomDouble(0, 1) < q) {
+                break;
+            }
+            beta = beta * (1.0 / (1.0 - q));
+        }
+        
+        // 建立局部坐标系
+        LocalFrame frame(hitRecord.normal);
+        Vector3 view_direction = frame.localFromWorld(Vector3(0,0,0) - ray.direction);
+        
+        if (abs(view_direction.y) < 1e-6) {
+            break;
+        }
+        
+        // 直接光照采样（对于非镜面材质）
+        if (!simpleMat->isDeltaDistribution()) {
+            Vector3 directLight = SampleDirectLight(hitRecord.hitPoint, frame, view_direction, simpleMat);
+            L = L + beta * directLight;
+        }
+        
+        // BSDF采样获得下一个方向
+        auto bsdf_sample = simpleMat->sampleBSDF(hitRecord.hitPoint, view_direction);
+        if (!bsdf_sample.has_value()) {
+            break;
+        }
+        
+        // 更新路径权重
+        beta = beta * bsdf_sample->bsdf * abs(bsdf_sample->light_direction.y) / bsdf_sample->pdf;
+        
+        // 设置下一条射线
+        ray.origin = hitRecord.hitPoint;
+        ray.direction = frame.worldFromLocal(bsdf_sample->light_direction);
+        last_is_specular = simpleMat->isDeltaDistribution();
     }
     
-    Vector3 dirLight = Vector3(0, 0, 0);
-    Vector3 indirLight = Vector3(0, 0, 0);
+    return L;
+}
+
+// 直接光照采样
+Vector3 Renderer::SampleDirectLight(const Vector3& hitPoint, const LocalFrame& frame, 
+                                   const Vector3& view_direction, SimpleDiffuseMaterial* material) {
+    Vector3 directLight(0, 0, 0);
     
-    // 重要性采样直接光照
-    if (m_config.render.enableImportanceSampling) {
-        for (auto light : m_scene->lights) {
-            SampleResult sample = light->UnitSamplePdf();
+    // 对每个光源采样
+    for (auto light : m_scene->lights) {
+        SampleResult sample = light->UnitSamplePdf();
+        Vector3 lightDir = (sample.position - hitPoint).Normalized();
+        double lightDistance = Vector3::Distance(hitPoint, sample.position);
+        
+        // 阴影射线测试
+        Ray shadowRay(hitPoint + frame.y_axis * 1e-4, lightDir);
+        HitRecord shadowHit;
+        m_scene->Hit(shadowRay, Interval(1e-4, lightDistance - 1e-4), shadowHit);
+        
+        if (!shadowHit.hitted) {
+            // 转换到局部坐标系
+            Vector3 light_direction_local = frame.localFromWorld(lightDir);
             
-            Ray occlusionRay(
-                p + normal * 0.01,
-                (sample.position - p).Normalized()
-            );
-            
-            HitRecord hitRecord;
-            m_scene->Hit(occlusionRay, Interval(0, Vector3::Distance(p, sample.position) - 0.01), hitRecord);
-            
-            if (!hitRecord.hitted) {
+            if (light_direction_local.y > 0) { // 确保在正确半球
+                // 获取光源发光
                 auto lightMaterial = std::dynamic_pointer_cast<Material_PBM>(light->material);
-                Vector3 emi = lightMaterial->EmissiveTerm(Vector3(0, 0, 0) - occlusionRay.direction, sample.position);
-                Vector3 fr = material->BRDF(p, wo, occlusionRay.direction, normal);
-                double cos1 = std::max(0.0, Vector3::Dot(occlusionRay.direction.Normalized(), normal));
-                double delta = Vector3::Distance(p, sample.position);
-                double term = cos1 / std::pow(delta, 2);
-                double pdf = sample.pdf;
+                Vector3 Le = lightMaterial ? lightMaterial->EmissiveTerm(Vector3(0,0,0) - lightDir, sample.position) : Vector3(1,1,1);
                 
-                dirLight = emi * fr * term / pdf;
+                // BSDF值
+                Vector3 f = material->BSDF(hitPoint, light_direction_local, view_direction);
+                
+                // 几何项
+                double cosTheta = abs(light_direction_local.y);
+                double cosLightTheta = std::max(0.0, Vector3::Dot(Vector3(0,0,0) - lightDir, sample.normal));
+                
+                // 立体角
+                double solidAngle = (cosLightTheta * sample.pdf) / (lightDistance * lightDistance + 1e-6);
+                
+                directLight = directLight + Le * f * cosTheta * solidAngle;
             }
         }
     }
     
-    // 俄罗斯轮盘
-    if (Random::GetRandomDouble(0, 1) > m_config.render.russianRouletteProb) {
-        return dirLight;
+    return directLight;
+}
+
+// 获取简化材质的辅助函数
+SimpleDiffuseMaterial* Renderer::GetSimpleMaterial(std::shared_ptr<Material> material) {
+    auto pbmMat = std::dynamic_pointer_cast<Material_PBM>(material);
+    if (!pbmMat) return nullptr;
+    
+    // 创建静态材质映射以避免重复创建
+    static std::map<Material*, std::unique_ptr<SimpleDiffuseMaterial>> materialMap;
+    
+    if (materialMap.find(material.get()) == materialMap.end()) {
+        if (pbmMat->isEmissive) {
+            materialMap[material.get()] = std::make_unique<SimpleDiffuseMaterial>(
+                pbmMat->emissiveDistribution * pbmMat->emissiveIntensity, true);
+        } else {
+            // 使用当前的albedo缓冲区
+            Vector3 albedo(pbmMat->albedoBuffer.r, pbmMat->albedoBuffer.g, pbmMat->albedoBuffer.b);
+            materialMap[material.get()] = std::make_unique<SimpleDiffuseMaterial>(albedo);
+        }
     }
     
-    // 间接光照采样
-    Ray ray(Vector3(0, 0, 0), Vector3(0, 0, 0));
-    double pdf = PDF::SampleHemisphere(p, ray, normal);
-    Vector3 wi = ray.direction;
-    
-    HitRecord bounceRecord;
-    m_scene->Hit(ray, Interval(), bounceRecord);
-    if (!bounceRecord.hitted) {
-        return dirLight;
-    }
-    
-    auto hitMaterial = std::dynamic_pointer_cast<Material_PBM>(bounceRecord.material);
-    double cosTheta = std::max(0.0, Vector3::Dot(wi, normal));
-    
-    if (!hitMaterial->isEmissive) {
-        Vector3 li = Shade(bounceRecord.hitPoint, Vector3(0, 0, 0) - wi, 
-                          bounceRecord.normal, bounceRecord.t, hitMaterial);
-        Vector3 fr = material->BRDF(p, wo, wi, normal, bounceRecord.u, bounceRecord.v);
-        Vector3 result = li * fr * cosTheta / pdf / m_config.render.russianRouletteProb;
-        indirLight = result;
-    } else if (!m_config.render.enableImportanceSampling) {
-        Vector3 emi = hitMaterial->EmissiveTerm(Vector3(0, 0, 0) - wi, p);
-        Vector3 fr = material->BRDF(p, wo, wi, normal, bounceRecord.u, bounceRecord.v);
-        Vector3 result = emi * fr * cosTheta / pdf / m_config.render.russianRouletteProb;
-        return result;
-    }
-    
-    return dirLight + indirLight;
+    return materialMap[material.get()].get();
+}
+
+Vector3 Renderer::Shade(const Vector3& p, const Vector3& wo, const Vector3& normal, 
+                        double t, std::shared_ptr<Material_PBM> material) {
+    // 保持旧接口兼容性，内部调用新的路径追踪
+    Ray ray(p, wo);
+    return PathTrace(ray, 0);
 }
 
 Vector3 Renderer::ShadeWithDebug(const Vector3& p, const Vector3& wo, const Vector3& normal, 
