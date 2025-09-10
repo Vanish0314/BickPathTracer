@@ -99,12 +99,12 @@ std::unique_ptr<Scene> SceneFactory::CreateCornellBoxScene() {
         "高粗箱子"
     );
     
-    // 第二个立方体 - 较矮的白色立方体（右侧）
-    auto shortBoxQuads = Box(
-        Vector3(3.5, 0,2),
-        Vector3(4.5,1 ,3),
-        white,
-        "矮粗箱子"
+    // 右侧物体改为一个较小的白色球体
+    auto rightSmallSphere = new Sphere(
+        "RightSmallSphere",
+        0.5,                              // 半径
+        Vector3(4.0, 0.5, 2.5),           // 位置（与原右侧矮箱子中心一致）
+        white
     );
     
     // 添加到场景
@@ -119,9 +119,8 @@ std::unique_ptr<Scene> SceneFactory::CreateCornellBoxScene() {
     for (auto quad : tallBoxQuads) {
         scene->AddObject(quad);
     }
-    for (auto quad : shortBoxQuads) {
-        scene->AddObject(quad);
-    }
+    // 添加右侧小球
+    scene->AddObject(rightSmallSphere);
     
     return scene;
 }
