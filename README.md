@@ -1,7 +1,7 @@
 <!--
  * @Author: Vanish
  * @Date: 2024-07-14 15:10:09
- * @LastEditTime: 2024-09-10 16:37:08
+ * @LastEditTime: 2025-09-11 09:39:23
  * Also View: http://vanishing.cc
  * Copyright@ https://creativecommons.org/licenses/by/4.0/deed.zh-hans
 -->
@@ -26,7 +26,7 @@
 
 ## ConellBox
 
-<img src = "result\ConellBox.png" alt = "ConellBox@1024ssp" >
+<img src = "result\cornell_box.png" alt = "CornellBox@1024ssp" >
 
 
 ## PBRSample
